@@ -5,24 +5,36 @@ from lcd import lcd
 
 import uctypes
 
+def sleeper(ms):
+    st = ticks_ms()
+    while(ticks_diff(ticks_ms(), st) < ms):
+        pass
 
 screen = lcd(1, 39, Pin(27), Pin(26))
 screen.clear()
 screen.print('Welcome to DPedal!')
 screen.set_line(2)
 screen.print('Initializing...')
-screen.set_line(3)
+sleeper(500)
+screen.clear()
+screen.set_line(1)
+screen.print('Init')
+screen.set_line(2)
 
-base_frequency = 4186*2*2 # highest frequency we can achieve (C10, 16kHz or so, very high)
-screen.print(f'f = {base_frequency/1000}kHz')
+base_frequency = 4186*2*2*2 # highest frequency we can achieve (C11, 32kHz or so, very high)
+screen.print(f'f={base_frequency/1000}kHz')
 screen.set_line(3)
 waveform_length = base_frequency//2 # gives us one quarter second as the clock runs at double time
+screen.print(f'buf={waveform_length//1000}kB')
 waveform_descriptor = {
     'amplitudes': (0 | uctypes.ARRAY, waveform_length | uctypes.UINT8)
 }
 
 led = Pin(25, Pin.OUT)
 led.on()
+t = Timer()
+led.toggle()
+t.init(mode=Timer.PERIODIC, freq=2, callback=lambda t: led.toggle())
 
 signal_out = Pin(15, Pin.OUT)
 
@@ -58,10 +70,16 @@ for i in range(waveform_length//15): # c4, middle c
 
 screen.set_line(4, col=10-2)
 screen.print('Done!')
-while(True):
-    pass
+t.deinit()
+for i in range(6):
+    led.toggle()
+    sleeper(1000//6)
+led.on()
 screen.clear()
+screen.set_line(1)
+screen.print('DP')
 run_waveform(wf_struct)
+
 #sleep_ms(1000)
 #for i in range(waveform_length//16):
 #    wf_struct.amplitudes[i*16] = 0
