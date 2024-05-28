@@ -21,7 +21,7 @@ screen.set_line(1)
 screen.print('Init')
 screen.set_line(2)
 
-base_frequency = 4186*2*2*2 # highest frequency we can achieve (C11, 32kHz or so, very high)
+base_frequency = 4186*2*2 # highest frequency we can achieve (C11, 16:kHz or so, very high)
 screen.print(f'f={base_frequency/1000}kHz')
 screen.set_line(3)
 waveform_length = base_frequency//2 # gives us one quarter second as the clock runs at double time
@@ -48,7 +48,8 @@ def run_waveform(wf):
             signal_out.off()
         microtick += 1
         if(microtick == waveform_length):
-            #timer.deinit()
+            timer.deinit()
+            signal_out.off()
             microtick = 0
 
     base_timer = Timer()
@@ -78,7 +79,11 @@ led.on()
 screen.clear()
 screen.set_line(1)
 screen.print('DP')
+
 run_waveform(wf_struct)
+
+sleeper(1000)
+print('done')
 
 #sleep_ms(1000)
 #for i in range(waveform_length//16):
