@@ -28,6 +28,13 @@ void my2c_write(i2c_inst_t* bus, uint8_t address, uint8_t* bytes, size_t len) {
 	i2c_write_blocking_until(bus, address, bytes, len, false, make_timeout_time_ms(50));
 }
 
+void my2c_write_free(i2c_inst_t* bus, uint8_t address, uint8_t* bytes, size_t len) {
+	for(uint i = 0; i < len; i++) {
+		while(!i2c_get_write_available(bus)) {} // wait for space to be available!
+		i2c_write_byte_raw(bus, bytes[i]);
+	}
+}
+
 void my2c_scan(i2c_inst_t* bus) {
 	printf("\nI2C Bus Scan\n");
 	printf("   0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F\n");

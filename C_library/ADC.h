@@ -12,11 +12,11 @@
 #include "hardware/gpio.h"
 
 static uint round_robin_mask = 0x0;
-#define RING_SHIFT 0x5
+#define RING_SHIFT 0xc
 #define RING_SIZE (1<<(RING_SHIFT-1))//32768/2
 static uint16_t adc_data_ring[RING_SIZE];
 
-void init_repeated_read(uint gpio) {
+void init_repeated_read(uint gpio, float sample_rate) {
 	// This function implements a hardware-interrupt system where the ADC at `gpio` will be read from at `rate` samples per second.
 	// Max rate: 50000
 
@@ -26,7 +26,8 @@ void init_repeated_read(uint gpio) {
 	}
 
 	adc_init();
-	adc_set_clkdiv(959.0f); // Setting the clock divider to the absolute minimum (0) clamps the period of samples to minimum. For RP2040, that's 96 cycles/sample. A bit too fast for us (~48MHz). Instead, set the total divider to 1000, so we read at ~50kHz.
+	float divisor = 48000000/sample_rate - 1.0;
+	adc_set_clkdiv(divisor); // Setting the clock divider to the absolute minimum (0) clamps the period of samples to minimum. For RP2040, that's 96 cycles/sample. A bit too fast for us (~48MHz). Instead, set the total divider to 1000, so we read at ~50kHz.
 	adc_gpio_init(gpio); // Disable all digital functions on gpio, enable hi-Z, no pullups
 	adc_select_input(gpio-26);
 	
