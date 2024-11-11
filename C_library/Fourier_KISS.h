@@ -7,33 +7,60 @@
 #include "ADC.h"
 #include "I2C.h"
 
-#define KERNEL_SIZE RING_SIZE
+#define KERNEL_SIZE (RING_SIZE/2 + 1)
 #define PI 3.1415926535897932386
 
 #ifndef FOURIER_H
 #define FOURIER_H
 
-static int16_t fourier_transform_real[KERNEL_SIZE];
-static int16_t fourier_transform_imag[KERNEL_SIZE];
-
 typedef struct fourier_kernel {
+	int* kernel;
+	kiss_fft_cpx* fourier_transform; 
+	uint time;
 	dac_t* dac;
-	size_t current_index;
-	//double complex fourier_transform[KERNEL_SIZE];
+	kiss_fftr_cfg cfg;
+	kiss_fftr_cfg icfg;
+	size_t cfg_len;
+	size_t icfg_len;
 } fourier_kernel_t;
 
 
 fourier_kernel_t* create_kernel(dac_t* dac) {
-	fourier_kernel_t* kernel = malloc(sizeof(fourier_kernel_t));
-	
-	kernel->current_index = 0;
+	fourier_kernel_t* kern = malloc(sizeof(fourier_kernel_t));
+	kern->kernel = malloc(sizeof(kiss_fft_cpx) * KERNEL_SIZE);
+	kern->fourier_transform = malloc(sizeof(kiss_fft_cpx) * KERNEL_SIZE);
+	kern->time = 0;
+	kern->dac = dac;
 
-	for(unsigned int i = 0; i < KERNEL_SIZE; i++) {
-		fourier_transform_imag[i] = 1<<11;
-		fourier_transform_real[i] = 1<<11;
+	kern->cfg = NULL;
+	kern->icfg = NULL;
+	kern->cfg_len = 0;
+	kern->icfg_len = 0;
+
+	kiss_fftr_cfg cfg = kiss_fftr_alloc(RING_SIZE, 0, &kern->cfg, &kern->cfg_len); // returns NULL, but gives us the minimum size cfg_len we need
+	kern->cfg = malloc(kern->cfg_len);
+	cfg = kiss_fftr_alloc(RING_SIZE, 0, kern->cfg, &kern->cfg_len); // Now it'll work!
+	
+	kiss_fftr_cfg icfg = kiss_fftr_alloc(RING_SIZE, 1, kern->icfg, &kern->icfg_len);
+	kern->icfg = malloc(kern->cfg_len);
+	icfg = kiss_fftr_alloc(RING_SIZE, 1, kern->icfg, &kern->icfg_len);
+	
+	if(cfg) {
+		printf("Config good\n");
+	} else {
+		printf("C BAD\n");
 	}
-	//kernel->fourier_transform = malloc(sizeof(double complex)*KERNEL_SIZE);
-	return kernel;
+	if(icfg) {
+		printf("iConfig good\n");
+	} else {
+		printf("iC BAD\n");
+	}
+	printf("C: %zu\n", kern->cfg_len);
+	printf("iC: %zu\n", kern->icfg_len);
+	if(kern->cfg) {
+		printf("Good\n");
+	}
+	return kern;
 }
 
 bool process_input(fourier_kernel_t* kernel){//repeating_timer_t* rt) { // This is a repeating timer callback
@@ -45,22 +72,10 @@ bool process_input(fourier_kernel_t* kernel){//repeating_timer_t* rt) { // This 
 	//fourier_kernel_t* kernel = (fourier_kernel_t*)(rt->user_data);
 
 	// Input handled by DMA
-	uint16_t oldest_input = adc_data_ring[kernel->current_index];
-	kernel->current_index = (kernel->current_index + 1) % KERNEL_SIZE;
-	uint16_t latest_input = adc_data_ring[kernel->current_index]; // step along time
-	int16_t diff = latest_input - oldest_input;
-	printf("%d\n", diff);
-	// Compute the new DFT
-	for(size_t i = 0; i < KERNEL_SIZE; i++) {
-		fourier_transform_real[i] -= diff;
-		fourier_transform_real[i] *= sin((2*PI*i) / KERNEL_SIZE);
-		fourier_transform_imag[i] *= cos((2*PI*i) / KERNEL_SIZE);
-		//double complex ft = cexp(I * (2*PI * i)/KERNEL_SIZE);
-		//ft *= fourier_transform[i] - diff;
-		//fourier_transform[i] = ft;
-	}
-	
-	
+	//uint16_t latest_input = adc_data_ring[++kernel->time % RING_SIZE]; // step along time
+
+	// Apply FT (kernel application baked in!)
+	kiss_fftr(kernel->cfg, (kiss_fft_scalar*)adc_data_ring, kernel->fourier_transform);
 	//for(uint i = 0; i < KERNEL_SIZE; i++) {
 	//	double complex tau  = i/REFRESH_RATE;
 	//	double complex wave = cexp(I*2*PI*tau);

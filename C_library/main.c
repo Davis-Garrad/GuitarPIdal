@@ -54,16 +54,11 @@ int main() {
 		process_input(kern);
 	}
 	absolute_time_t et = get_absolute_time();
-	printf("Time: %lld, %f", absolute_time_diff_us(st, et), (double)absolute_time_diff_us(st,et)/(100));
+	printf("Time: %lld, %f\n\n", absolute_time_diff_us(st, et), (double)absolute_time_diff_us(st,et)/(100));
 	for(uint i = 0; i < 20; i++) {
-		printf("%f + i%f\n", kern->fourier_transform[i].r, kern->fourier_transform[i].i);
+		printf("%d + i%d\n", fourier_transform_real[i], fourier_transform_imag[i]);
 	}
 	printf("Done!\n");
-	kiss_fft_scalar* real_result = malloc(sizeof(kiss_fft_scalar)*RING_SIZE);
-	kiss_fftri(kern->icfg, kern->fourier_transform, real_result);
-	for(uint i = 0; i < 20; i++) {
-		printf("%f\n", real_result[i]);
-	}
 
 	set_dac_amplitude(dac, 2048);
 
